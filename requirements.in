@@ -1,0 +1,4 @@
+# Top-level runtime dependencies (pinned versions live in requirements.txt).
+httpx
+pydantic
+pydantic-settings

@@ -1,0 +1,26 @@
+[project]
+name = "job-hunt-agent"
+version = "0.1.0"
+description = "An AI agent that searches Irish jobs, scores them against a CV and tracks applications"
+requires-python = ">=3.12"
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "W", "C4", "SIM"]
+
+[tool.mypy]
+python_version = "3.12"
+disallow_untyped_defs = true
+warn_unused_ignores = true
+warn_redundant_casts = true
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+addopts = "-q --cov=jobagent --cov-report=term-missing --cov-fail-under=100"
+
+[tool.coverage.run]
+source = ["jobagent"]
