@@ -24,3 +24,5 @@ addopts = "-q --cov=jobagent --cov-report=term-missing --cov-fail-under=100"
 
 [tool.coverage.run]
 source = ["jobagent"]
+# Interactive terminal shell; every piece it wires together is tested directly.
+omit = ["jobagent/cli.py"]

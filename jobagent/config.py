@@ -17,6 +17,13 @@ class Settings(BaseSettings):
     adzuna_country: str = "ie"
     adzuna_base_url: str = "https://api.adzuna.com/v1/api/jobs"
 
+    # --- LLM (Groq, via its OpenAI-compatible API; free key: console.groq.com) ---
+    groq_api_key: str = ""
+    llm_base_url: str = "https://api.groq.com/openai/v1"
+    llm_model: str = "openai/gpt-oss-120b"
+    # Hard cap on graph steps per request so a confused agent can't loop forever.
+    max_steps: int = 12
+
     # --- Application tracker (SQLite file) ---
     db_path: str = "data/applications.db"
 

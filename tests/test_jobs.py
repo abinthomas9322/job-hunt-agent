@@ -33,7 +33,7 @@ ADZUNA_RESPONSE = {
 
 def _settings(**overrides: str) -> Settings:
     values = {"adzuna_app_id": "id", "adzuna_app_key": "key", **overrides}
-    return Settings(_env_file=None, **values)  # type: ignore[call-arg]
+    return Settings(_env_file=None, **values)  # type: ignore[call-arg, arg-type]
 
 
 def _client(handler: httpx.MockTransport, **overrides: str) -> JobSearchClient:

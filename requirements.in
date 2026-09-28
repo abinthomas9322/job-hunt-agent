@@ -2,3 +2,6 @@
 httpx
 pydantic
 pydantic-settings
+langgraph
+langchain-core
+langchain-openai
