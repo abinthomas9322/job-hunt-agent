@@ -66,7 +66,7 @@ class FakeSearch:
 class FakeStructuredModel:
     """Fake chat model for structured output: returns canned results in order."""
 
-    def __init__(self, results: Sequence[dict[str, Any]]) -> None:
+    def __init__(self, results: Sequence[dict[str, Any] | Exception]) -> None:
         self.results = list(results)
         self.schema: type | None = None
         self.prompts: list[Any] = []
@@ -77,7 +77,10 @@ class FakeStructuredModel:
 
     def invoke(self, messages: Any, *args: Any, **kwargs: Any) -> dict[str, Any]:
         self.prompts.append(messages)
-        return self.results.pop(0)
+        result = self.results.pop(0)
+        if isinstance(result, Exception):
+            raise result
+        return result
 
 
 def match(score: int, missing: list[str] | None = None) -> dict[str, Any]:

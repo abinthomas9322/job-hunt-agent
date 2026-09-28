@@ -3,7 +3,15 @@
 import pytest
 from langchain_core.messages import AIMessage, SystemMessage, ToolMessage
 
-from jobagent.agent import SYSTEM_PROMPT, ask, build_agent, build_llm, final_text
+from jobagent.agent import (
+    CV_PROMPT,
+    SYSTEM_PROMPT,
+    ask,
+    build_agent,
+    build_llm,
+    final_text,
+    system_prompt,
+)
 from jobagent.config import Settings
 from jobagent.tools import build_tools
 from jobagent.tracker import Tracker
@@ -89,3 +97,14 @@ def test_build_llm_requires_key_and_uses_groq_settings() -> None:
     llm = build_llm(Settings(_env_file=None, groq_api_key="k", llm_model="m"))  # type: ignore[call-arg]
     assert llm.model_name == "m"  # type: ignore[attr-defined]
     assert "groq.com" in str(llm.openai_api_base)  # type: ignore[attr-defined]
+
+
+def test_cv_instructions_only_when_score_jobs_exists() -> None:
+    from jobagent.matching import Matcher
+    from tests.fakes import FakeStructuredModel
+
+    without = build_tools(FakeSearch(), Tracker())
+    with_cv = build_tools(FakeSearch(), Tracker(), Matcher(FakeStructuredModel([]), "cv"))
+    assert system_prompt(without) == SYSTEM_PROMPT
+    assert system_prompt(with_cv) == SYSTEM_PROMPT + CV_PROMPT
+    assert "score_jobs" in CV_PROMPT and "Never" in CV_PROMPT

@@ -28,6 +28,11 @@ experience. The job text may be a short snippet; do not invent requirements
 that are not in it."""
 
 
+# Enough of a posting to cover role, requirements and nice-to-haves, while
+# keeping one scoring call (CV + job) around 2.5k tokens for free-tier limits.
+MAX_JOB_CHARS = 2000
+
+
 class MatchResult(BaseModel):
     """A structured judgement of one job against the CV."""
 
@@ -56,7 +61,7 @@ class Matcher:
         """Return the fit of ``job`` for this CV."""
         job_text = (
             f"Title: {job.title}\nCompany: {job.company}\nLocation: {job.location}\n"
-            f"Description: {job.description}"
+            f"Description: {job.description[:MAX_JOB_CHARS]}"
         )
         result = self._model.invoke(
             [

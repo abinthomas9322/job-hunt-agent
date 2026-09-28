@@ -14,3 +14,7 @@ htmlcov/
 # --- Local data ---
 *.db
 data/
+
+# Any other local env files (e.g. .env.local, .env.main.txt)
+.env.*
+!.env.example

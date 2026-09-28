@@ -7,6 +7,7 @@ Run from the repo root (needs GROQ_API_KEY and the Adzuna keys in .env)::
 """
 
 import argparse
+import sys
 import uuid
 
 from langchain_core.messages import AIMessage, ToolMessage
@@ -24,6 +25,8 @@ def main() -> None:  # pragma: no cover - interactive shell around tested pieces
     parser = argparse.ArgumentParser(description="Chat with the Job Hunt Agent.")
     parser.add_argument("--trace", action="store_true", help="show tool calls and results")
     args = parser.parse_args()
+    # LLM replies can contain characters the Windows console codepage lacks.
+    sys.stdout.reconfigure(encoding="utf-8")  # type: ignore[union-attr]
 
     settings = get_settings()
     llm = build_llm(settings)

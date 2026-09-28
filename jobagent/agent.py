@@ -33,12 +33,25 @@ next steps. Rules:
 - Use the tools for facts. Never invent jobs, companies, salaries or links:
   only mention jobs that a search_jobs result actually returned.
 - When you list jobs, include the title, company, location and the url.
-- When the user asks which jobs fit them, use score_jobs and report the score,
-  the main missing skills and the url. Scores come only from score_jobs.
+- Only mention fit scores that score_jobs returned.
 - Only save or update applications when the user asks you to.
 - If a tool returns an error, explain it briefly and try a sensible fix
   (for example broader keywords) at most once.
 - Be concise."""
+
+
+# Added only when a CV is loaded, i.e. when the score_jobs tool exists.
+CV_PROMPT = """
+The user's CV is already loaded and score_jobs compares jobs against it. Never
+ask the user for their CV or skills: when they ask which jobs fit them, search
+first, then call score_jobs with the job ids and report each job's score, main
+missing skills and url."""
+
+
+def system_prompt(tools: Sequence[BaseTool]) -> str:
+    """The system prompt, with CV instructions only if score_jobs is available."""
+    has_cv = any(t.name == "score_jobs" for t in tools)
+    return SYSTEM_PROMPT + (CV_PROMPT if has_cv else "")
 
 
 class ToolCallingModel(Protocol):
@@ -59,6 +72,9 @@ def build_llm(settings: Settings | None = None) -> ToolCallingModel:
         base_url=s.llm_base_url,
         api_key=s.groq_api_key,  # type: ignore[arg-type]
         temperature=0,
+        # Groq's free tier allows ~8k tokens/minute; back off and retry on 429s
+        # instead of failing the whole run.
+        max_retries=6,
     )
 
 
@@ -69,9 +85,10 @@ def build_agent(
 ) -> CompiledStateGraph[Any]:
     """Wire the LLM and tools into a LangGraph tool-calling loop."""
     model = llm.bind_tools(tools)
+    prompt = system_prompt(tools)
 
     def agent_node(state: MessagesState) -> dict[str, list[BaseMessage]]:
-        messages = [SystemMessage(SYSTEM_PROMPT), *state["messages"]]
+        messages = [SystemMessage(prompt), *state["messages"]]
         return {"messages": [model.invoke(messages)]}
 
     graph = StateGraph(MessagesState)

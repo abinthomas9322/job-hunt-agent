@@ -92,3 +92,18 @@ def test_score_jobs_ranks_best_first_and_flags_unknown_ids() -> None:
 
 def test_score_jobs_is_only_offered_with_a_cv() -> None:
     assert "score_jobs" not in _tools()[0]
+
+
+def test_score_jobs_reports_failures_and_caps_the_batch() -> None:
+    from jobagent.matching import Matcher
+    from tests.fakes import FakeStructuredModel, match
+
+    jobs = [job(str(i)) for i in range(7)]
+    llm = FakeStructuredModel([RuntimeError("429"), *[match(50)] * 6])
+    tools = {t.name: t for t in build_tools(FakeSearch(jobs=jobs), Tracker(), Matcher(llm, "cv"))}
+    tools["search_jobs"].invoke({"what": "ai", "limit": 7})
+
+    out = json.loads(tools["score_jobs"].invoke({"job_ids": [j.id for j in jobs]}))
+
+    assert len(out) == 5  # capped
+    assert out[-1] == {"job_id": "0", "error": "scoring failed: RuntimeError"}

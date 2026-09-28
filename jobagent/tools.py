@@ -114,6 +114,10 @@ def build_tools(
     return tools
 
 
+# Each score is one LLM call; cap them so one request stays within rate limits.
+MAX_SCORED = 5
+
+
 def _score_jobs_tool(matcher: Matcher, seen: dict[str, Job]) -> BaseTool:
     @tool
     def score_jobs(job_ids: list[str]) -> str:
@@ -122,14 +126,21 @@ def _score_jobs_tool(matcher: Matcher, seen: dict[str, Job]) -> BaseTool:
         Use this when the user asks which jobs suit them, or to rank search
         results. ``job_ids`` must come from earlier search_jobs results. Returns
         a JSON list with a 0-100 score, matched and missing skills, and a reason.
+        At most 5 jobs are scored per call.
         """
         results = []
-        for job_id in job_ids:
+        for job_id in job_ids[:MAX_SCORED]:
             job = seen.get(job_id)
             if job is None:
                 results.append({"job_id": job_id, "error": "unknown job id, search first"})
                 continue
-            match = matcher.score(job)
+            try:
+                match = matcher.score(job)
+            except Exception as exc:  # e.g. rate limit: report it, don't crash the run
+                results.append(
+                    {"job_id": job_id, "error": f"scoring failed: {exc.__class__.__name__}"}
+                )
+                continue
             results.append({"job_id": job_id, "title": job.title, **match.model_dump()})
         results.sort(key=lambda r: r.get("score", -1), reverse=True)
         return json.dumps(results)
