@@ -107,6 +107,13 @@ def build_tools(
             return "No tracked applications yet."
         return json.dumps([a.model_dump() for a in apps])
 
+    tools: list[BaseTool] = [search_jobs, save_application, update_application, list_applications]
+    if matcher is not None:
+        tools.append(_score_jobs_tool(matcher, seen))
+    return tools
+
+
+def _score_jobs_tool(matcher: Matcher, seen: dict[str, Job]) -> BaseTool:
     @tool
     def score_jobs(job_ids: list[str]) -> str:
         """Score how well jobs fit the user's CV, best match first.
@@ -115,7 +122,6 @@ def build_tools(
         results. ``job_ids`` must come from earlier search_jobs results. Returns
         a JSON list with a 0-100 score, matched and missing skills, and a reason.
         """
-        assert matcher is not None  # tool only offered when a matcher exists
         results = []
         for job_id in job_ids:
             job = seen.get(job_id)
@@ -127,7 +133,4 @@ def build_tools(
         results.sort(key=lambda r: r.get("score", -1), reverse=True)
         return json.dumps(results)
 
-    tools: list[BaseTool] = [search_jobs, save_application, update_application, list_applications]
-    if matcher is not None:
-        tools.append(score_jobs)
-    return tools
+    return score_jobs
