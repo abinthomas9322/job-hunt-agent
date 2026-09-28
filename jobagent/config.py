@@ -24,6 +24,9 @@ class Settings(BaseSettings):
     # Hard cap on graph steps per request so a confused agent can't loop forever.
     max_steps: int = 12
 
+    # --- Your CV (.docx, .txt or .md); contact details are redacted on load ---
+    cv_path: str = ""
+
     # --- Application tracker (SQLite file) ---
     db_path: str = "data/applications.db"
 

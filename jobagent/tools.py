@@ -14,6 +14,7 @@ import json
 from langchain_core.tools import BaseTool, tool
 
 from jobagent.jobs import Job, JobSearchClient, JobSearchError
+from jobagent.matching import Matcher
 from jobagent.tracker import Status, Tracker
 
 
@@ -33,8 +34,13 @@ def _job_summary(job: Job) -> dict[str, object]:
     }
 
 
-def build_tools(search: JobSearchClient, tracker: Tracker) -> list[BaseTool]:
+def build_tools(
+    search: JobSearchClient, tracker: Tracker, matcher: Matcher | None = None
+) -> list[BaseTool]:
     """Create the agent's tools, bound to a search client and a tracker.
+
+    ``score_jobs`` is only offered when a ``matcher`` (i.e. a CV) is available,
+    so the model is never shown a tool it can't use.
 
     Jobs returned by a search are remembered for the session, so the model can
     refer to them later by id alone (e.g. to save one) without re-sending them.
@@ -101,4 +107,27 @@ def build_tools(search: JobSearchClient, tracker: Tracker) -> list[BaseTool]:
             return "No tracked applications yet."
         return json.dumps([a.model_dump() for a in apps])
 
-    return [search_jobs, save_application, update_application, list_applications]
+    @tool
+    def score_jobs(job_ids: list[str]) -> str:
+        """Score how well jobs fit the user's CV, best match first.
+
+        Use this when the user asks which jobs suit them, or to rank search
+        results. ``job_ids`` must come from earlier search_jobs results. Returns
+        a JSON list with a 0-100 score, matched and missing skills, and a reason.
+        """
+        assert matcher is not None  # tool only offered when a matcher exists
+        results = []
+        for job_id in job_ids:
+            job = seen.get(job_id)
+            if job is None:
+                results.append({"job_id": job_id, "error": "unknown job id, search first"})
+                continue
+            match = matcher.score(job)
+            results.append({"job_id": job_id, "title": job.title, **match.model_dump()})
+        results.sort(key=lambda r: r.get("score", -1), reverse=True)
+        return json.dumps(results)
+
+    tools: list[BaseTool] = [search_jobs, save_application, update_application, list_applications]
+    if matcher is not None:
+        tools.append(score_jobs)
+    return tools

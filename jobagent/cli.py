@@ -13,7 +13,9 @@ from langchain_core.messages import AIMessage, ToolMessage
 
 from jobagent.agent import ask, build_agent, build_llm, final_text
 from jobagent.config import get_settings
+from jobagent.cv import load_cv
 from jobagent.jobs import JobSearchClient
+from jobagent.matching import Matcher
 from jobagent.tools import build_tools
 from jobagent.tracker import Tracker
 
@@ -24,10 +26,13 @@ def main() -> None:  # pragma: no cover - interactive shell around tested pieces
     args = parser.parse_args()
 
     settings = get_settings()
-    tools = build_tools(JobSearchClient(settings), Tracker(settings.db_path))
-    agent = build_agent(build_llm(settings), tools)
+    llm = build_llm(settings)
+    matcher = Matcher(llm, load_cv(settings.cv_path)) if settings.cv_path else None  # type: ignore[arg-type]
+    tools = build_tools(JobSearchClient(settings), Tracker(settings.db_path), matcher)
+    agent = build_agent(llm, tools)
     thread = uuid.uuid4().hex
-    print("Job Hunt Agent — type 'quit' to exit.\n")
+    cv_note = "CV loaded" if matcher else "no CV_PATH set, so job scoring is off"
+    print(f"Job Hunt Agent ({cv_note}). Type 'quit' to exit.\n")
 
     while (text := input("you> ").strip()).lower() not in {"quit", "exit"}:
         if not text:

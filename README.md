@@ -10,7 +10,7 @@
 
 - [x] **Slice 1: tools.** Real job search via the [Adzuna API](https://developer.adzuna.com) and a SQLite application tracker
 - [x] **Slice 2: agent loop.** LangGraph graph where the LLM (Groq) chooses tools, with per-conversation memory and a step limit
-- [ ] Slice 3: CV ↔ job match scoring
+- [x] **Slice 3: CV match scoring.** `score_jobs` rates each job 0-100 against your CV with matched/missing skills, using schema-validated structured output; contact details are redacted before the CV reaches the LLM
 - [ ] Slice 4: cover-letter drafts with human approval
 - [ ] Slice 5: agent evaluation (tool-choice accuracy, score accuracy)
 - [ ] Slice 6: MCP server, UI, Docker

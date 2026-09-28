@@ -61,3 +61,29 @@ class FakeSearch:
         if self.error:
             raise JobSearchError(self.error)
         return self.jobs
+
+
+class FakeStructuredModel:
+    """Fake chat model for structured output: returns canned results in order."""
+
+    def __init__(self, results: Sequence[dict[str, Any]]) -> None:
+        self.results = list(results)
+        self.schema: type | None = None
+        self.prompts: list[Any] = []
+
+    def with_structured_output(self, schema: type, **kwargs: Any) -> "FakeStructuredModel":
+        self.schema = schema
+        return self
+
+    def invoke(self, messages: Any, *args: Any, **kwargs: Any) -> dict[str, Any]:
+        self.prompts.append(messages)
+        return self.results.pop(0)
+
+
+def match(score: int, missing: list[str] | None = None) -> dict[str, Any]:
+    return {
+        "score": score,
+        "matched_skills": ["Python", "RAG"],
+        "missing_skills": missing or [],
+        "summary": f"Scored {score}.",
+    }
