@@ -14,8 +14,8 @@ from langchain_core.messages import AIMessage, ToolMessage
 from jobagent.agent import ask, build_agent, build_llm, final_text
 from jobagent.config import get_settings
 from jobagent.cv import load_cv
-from jobagent.jobs import JobSearchClient
 from jobagent.matching import Matcher
+from jobagent.sources import build_job_source
 from jobagent.tools import build_tools
 from jobagent.tracker import Tracker
 
@@ -28,7 +28,7 @@ def main() -> None:  # pragma: no cover - interactive shell around tested pieces
     settings = get_settings()
     llm = build_llm(settings)
     matcher = Matcher(llm, load_cv(settings.cv_path)) if settings.cv_path else None  # type: ignore[arg-type]
-    tools = build_tools(JobSearchClient(settings), Tracker(settings.db_path), matcher)
+    tools = build_tools(build_job_source(settings), Tracker(settings.db_path), matcher)
     agent = build_agent(llm, tools)
     thread = uuid.uuid4().hex
     cv_note = "CV loaded" if matcher else "no CV_PATH set, so job scoring is off"

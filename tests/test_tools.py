@@ -11,7 +11,7 @@ from tests.fakes import FakeSearch, job
 
 def _tools(search: FakeSearch | None = None) -> tuple[dict[str, BaseTool], Tracker]:
     tracker = Tracker()
-    tools = build_tools(search or FakeSearch(), tracker)  # type: ignore[arg-type]
+    tools = build_tools(search or FakeSearch(), tracker)
     return {t.name: t for t in tools}, tracker
 
 
@@ -80,7 +80,7 @@ def test_score_jobs_ranks_best_first_and_flags_unknown_ids() -> None:
 
     search = FakeSearch(jobs=[job("1", "Data Analyst"), job("2", "AI Engineer")])
     matcher = Matcher(FakeStructuredModel([match(40), match(85, ["Docker"])]), "cv")
-    tools = {t.name: t for t in build_tools(search, Tracker(), matcher)}  # type: ignore[arg-type]
+    tools = {t.name: t for t in build_tools(search, Tracker(), matcher)}
     tools["search_jobs"].invoke({"what": "ai"})
 
     out = json.loads(tools["score_jobs"].invoke({"job_ids": ["1", "2", "zzz"]}))

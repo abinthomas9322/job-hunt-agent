@@ -11,7 +11,7 @@ from tests.fakes import FakeSearch, ScriptedModel, call
 
 
 def _agent(model: ScriptedModel, search: FakeSearch | None = None):  # type: ignore[no-untyped-def]
-    tools = build_tools(search or FakeSearch(), Tracker())  # type: ignore[arg-type]
+    tools = build_tools(search or FakeSearch(), Tracker())
     return build_agent(model, tools)
 
 

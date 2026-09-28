@@ -60,7 +60,7 @@ def test_search_maps_results_and_sends_expected_query() -> None:
     assert jobs[1].company == "Unknown" and jobs[1].id == "7"
 
     params = seen[0].url.params
-    assert seen[0].url.path == "/v1/api/jobs/ie/search/1"
+    assert seen[0].url.path == "/v1/api/jobs/gb/search/1"  # Adzuna has no Ireland
     assert params["what"] == "ai engineer"
     assert params["where"] == "Dublin"
     assert params["max_days_old"] == "14"

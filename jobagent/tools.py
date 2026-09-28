@@ -13,8 +13,9 @@ import json
 
 from langchain_core.tools import BaseTool, tool
 
-from jobagent.jobs import Job, JobSearchClient, JobSearchError
+from jobagent.jobs import Job, JobSearchError
 from jobagent.matching import Matcher
+from jobagent.sources import JobSource
 from jobagent.tracker import Status, Tracker
 
 
@@ -35,7 +36,7 @@ def _job_summary(job: Job) -> dict[str, object]:
 
 
 def build_tools(
-    search: JobSearchClient, tracker: Tracker, matcher: Matcher | None = None
+    search: JobSource, tracker: Tracker, matcher: Matcher | None = None
 ) -> list[BaseTool]:
     """Create the agent's tools, bound to a search client and a tracker.
 
@@ -51,7 +52,7 @@ def build_tools(
     def search_jobs(
         what: str, where: str = "", max_days_old: int | None = None, limit: int = 5
     ) -> str:
-        """Search live job listings in Ireland.
+        """Search live job listings (by default: tech employers hiring in Ireland).
 
         Use this whenever the user wants to find jobs. ``what`` is keywords such
         as "graduate ai engineer" or "junior data analyst python"; ``where`` is
