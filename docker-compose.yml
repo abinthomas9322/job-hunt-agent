@@ -1,0 +1,20 @@
+services:
+  app:
+    build: .
+    ports:
+      - "8501:8501"
+    env_file:
+      - .env
+    environment:
+      # Paths as seen *inside* the container; the real files are bind-mounted
+      # below. These override whatever CV_PATH/DB_PATH/LETTERS_DIR came from
+      # .env, which otherwise holds host paths meant for a native run.
+      CV_PATH: /app/cv/cv.docx
+      DB_PATH: /app/data/applications.db
+      LETTERS_DIR: /app/data/letters
+    volumes:
+      - ./data:/app/data
+      # Set CV_HOST_PATH in .env to your real CV's path, e.g.:
+      #   CV_HOST_PATH=/c/Users/you/Documents/cv.docx
+      - ${CV_HOST_PATH}:/app/cv/cv.docx:ro
+    restart: unless-stopped

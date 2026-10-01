@@ -16,7 +16,9 @@
 - [x] **Slice 5: agent evaluation.** `evals/` runs hand-labelled cases against the
   real LLM (not the scripted fakes `tests/` uses) and checks tool-choice
   accuracy and CV-score accuracy/ranking; see [Evaluating the agent](#evaluating-the-agent)
-- [ ] Slice 6: UI, Docker
+- [x] **Slice 6: UI, Docker.** A Streamlit chat UI (`jobagent/ui.py`) mirroring the
+  CLI's ask/approve/resume flow, and a `Dockerfile` + `docker-compose.yml` to run it
+  containerised; see [Web UI](#web-ui) and [Run with Docker](#run-with-docker)
 
 ## Quick start
 
@@ -26,7 +28,8 @@ source .venv/bin/activate            # Windows: .venv\Scripts\activate
 pip install -r requirements.txt -r requirements-dev.txt
 cp .env.example .env                 # add GROQ_API_KEY and CV_PATH
 pytest                               # tests + 100% coverage gate
-python -m jobagent.cli --trace       # chat with the agent (needs keys in .env)
+python -m jobagent.cli --trace       # chat with the agent in the terminal
+streamlit run jobagent/ui.py         # ...or in the browser (needs keys in .env)
 ```
 
 ## Job data
@@ -122,6 +125,34 @@ API calls, so it's not part of `pytest` or CI. It checks:
 
 Exits non-zero if anything fails, so it also works as a manual gate before
 changing `SYSTEM_PROMPT`, a tool's docstring, or the scoring rubric.
+
+## Web UI
+
+`jobagent/ui.py` is the same agent as the CLI, in the browser:
+
+```bash
+streamlit run jobagent/ui.py
+```
+
+It's a thin Streamlit wrapper around `jobagent.agent`'s `ask`/`pending_approval`/
+`resume` functions — the LangGraph checkpointer holds each conversation's real
+state, so the UI only keeps a small display-only transcript to redraw on each
+rerun. A pending cover-letter draft shows inline with Approve/Reject controls,
+same as the CLI's `[y]/[n]/[e]` prompt. Tool calls and their results are
+available per turn in a collapsed "N tool call(s)" expander.
+
+## Run with Docker
+
+```bash
+cp .env.example .env    # fill in GROQ_API_KEY, CV_PATH and CV_HOST_PATH
+docker compose up --build
+```
+
+Then open `http://localhost:8501`. `CV_PATH`/`DB_PATH`/`LETTERS_DIR` are
+overridden inside the container to fixed in-container paths; the compose file
+bind-mounts your real CV (from `CV_HOST_PATH` in `.env`) read-only, and
+`./data` on the host for the SQLite tracker and saved letters, so both survive
+a `docker compose down`.
 
 ## License
 
