@@ -50,6 +50,9 @@ class Settings(BaseSettings):
     # --- Your CV (.docx, .txt or .md); contact details are redacted on load ---
     cv_path: str = ""
 
+    # --- Where approved cover letters are written ---
+    letters_dir: str = "data/letters"
+
     # --- Application tracker (SQLite file) ---
     db_path: str = "data/applications.db"
 

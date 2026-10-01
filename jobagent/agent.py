@@ -23,6 +23,7 @@ from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.graph import END, START, MessagesState, StateGraph
 from langgraph.graph.state import CompiledStateGraph
 from langgraph.prebuilt import ToolNode, tools_condition
+from langgraph.types import Command
 
 from jobagent.config import Settings, get_settings
 
@@ -45,7 +46,9 @@ CV_PROMPT = """
 The user's CV is already loaded and score_jobs compares jobs against it. Never
 ask the user for their CV or skills: when they ask which jobs fit them, search
 first, then call score_jobs with the job ids and report each job's score, main
-missing skills and url."""
+missing skills and url.
+Only draft a cover letter (draft_cover_letter) when the user asks for one. The
+user approves each draft, so never say a letter is saved until the tool says so."""
 
 
 def system_prompt(tools: Sequence[BaseTool]) -> str:
@@ -115,6 +118,34 @@ def ask(
     }
     before = len(agent.get_state(config).values.get("messages", []))
     result = agent.invoke({"messages": [("user", message)]}, config)
+    return list(result["messages"][before:])
+
+
+def pending_approval(agent: CompiledStateGraph[Any], thread_id: str) -> dict[str, Any] | None:
+    """What the paused agent is waiting for the user to approve, if anything.
+
+    A tool such as ``draft_cover_letter`` pauses the graph with an interrupt;
+    its payload (e.g. the draft letter) is returned here until the thread is
+    resumed with ``resume``.
+    """
+    state = agent.get_state({"configurable": {"thread_id": thread_id}})
+    return dict(state.interrupts[0].value) if state.interrupts else None
+
+
+def resume(
+    agent: CompiledStateGraph[Any], decision: dict[str, Any], thread_id: str, max_steps: int = 12
+) -> list[BaseMessage]:
+    """Answer a pending approval and let the agent carry on; return the new messages.
+
+    ``decision`` is ``{"approved": True}`` (optionally with an edited ``text``)
+    or ``{"approved": False, "feedback": "..."}``.
+    """
+    config: RunnableConfig = {
+        "configurable": {"thread_id": thread_id},
+        "recursion_limit": max_steps,
+    }
+    before = len(agent.get_state(config).values.get("messages", []))
+    result = agent.invoke(Command(resume=decision), config)
     return list(result["messages"][before:])
 
 

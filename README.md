@@ -12,7 +12,7 @@
 - [x] **Slice 2: agent loop.** LangGraph graph where the LLM (Groq) chooses tools, with per-conversation memory and a step limit
 - [x] **Slice 3: CV match scoring.** `score_jobs` rates each job 0-100 against your CV with matched/missing skills, using schema-validated structured output; contact details are redacted before the CV reaches the LLM
 - [x] **MCP server.** The same tools exposed over the Model Context Protocol, so Claude Desktop, Claude Code or any MCP client can search, score and track jobs (see [Use it from an MCP client](#use-it-from-an-mcp-client))
-- [ ] Slice 4: cover-letter drafts with human approval
+- [x] **Slice 4: cover letters with human approval.** `draft_cover_letter` writes a letter from CV facts only, then pauses the graph (LangGraph `interrupt`) until you approve, edit or reject it; only approved letters are saved to `data/letters/`, and rejection feedback goes back to the agent for a redraft
 - [ ] Slice 5: agent evaluation (tool-choice accuracy, score accuracy)
 - [ ] Slice 6: UI, Docker
 
@@ -81,6 +81,19 @@ which to call, in what order, and when it has enough to answer. Tool errors
 come back as text so the agent can recover, and a step limit stops runaway
 loops. Tests drive the graph with a scripted fake LLM, so they are fast,
 free and deterministic.
+
+## Human in the loop
+
+```
+agent ─► draft_cover_letter ─► interrupt ── waits ──► you: approve / edit / reject
+                                                         │
+          ◄── "saved to data/letters/..." or feedback ◄──┘   (Command(resume=...))
+```
+
+The graph is checkpointed, so a paused run survives while it waits for you.
+Drafts are cached per job, so the letter you approve is exactly the one saved.
+In the CLI the draft is shown with a `[y]es / [n]o / [e]dit` prompt. The tool is
+not exposed over MCP, because the pause only works inside the agent.
 
 ## License
 

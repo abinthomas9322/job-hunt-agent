@@ -17,7 +17,7 @@ from jobagent.config import get_settings
 from jobagent.cv import load_cv
 from jobagent.matching import Matcher
 from jobagent.sources import build_job_source
-from jobagent.tools import build_tools
+from jobagent.tools import NEEDS_APPROVAL, build_tools
 from jobagent.tracker import Tracker
 
 INSTRUCTIONS = (
@@ -31,9 +31,13 @@ def build_server(tools: list[BaseTool]) -> MCPServer:
 
     The tools' typed signatures and docstrings become the MCP input schemas and
     descriptions, so the agent and MCP clients see exactly the same contract.
+    Tools that pause for human approval are skipped: the pause only works
+    inside the LangGraph agent.
     """
     server = MCPServer("job-hunt-agent", instructions=INSTRUCTIONS)
     for t in tools:
+        if NEEDS_APPROVAL in (t.tags or []):
+            continue
         if not isinstance(t, StructuredTool) or t.func is None:
             raise TypeError(f"tool {t.name!r} has no plain function to expose")
         server.add_tool(t.func, name=t.name, description=t.description)

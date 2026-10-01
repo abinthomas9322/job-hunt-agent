@@ -90,3 +90,18 @@ def match(score: int, missing: list[str] | None = None) -> dict[str, Any]:
         "missing_skills": missing or [],
         "summary": f"Scored {score}.",
     }
+
+
+class FakeChat:
+    """Fake plain chat model: returns canned replies (or raises) in order."""
+
+    def __init__(self, replies: Sequence[str | Exception]) -> None:
+        self.replies = list(replies)
+        self.prompts: list[Any] = []
+
+    def invoke(self, messages: Any, *args: Any, **kwargs: Any) -> AIMessage:
+        self.prompts.append(messages)
+        reply = self.replies.pop(0)
+        if isinstance(reply, Exception):
+            raise reply
+        return AIMessage(reply)

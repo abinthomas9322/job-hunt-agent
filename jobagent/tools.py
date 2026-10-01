@@ -12,8 +12,10 @@ different keywords) instead of the whole run crashing.
 import json
 
 from langchain_core.tools import BaseTool, tool
+from langgraph.types import interrupt
 
 from jobagent.jobs import Job, JobSearchError
+from jobagent.letters import LetterWriter, save_letter
 from jobagent.matching import Matcher
 from jobagent.sources import JobSource
 from jobagent.tracker import Status, Tracker
@@ -36,12 +38,17 @@ def _job_summary(job: Job) -> dict[str, object]:
 
 
 def build_tools(
-    search: JobSource, tracker: Tracker, matcher: Matcher | None = None
+    search: JobSource,
+    tracker: Tracker,
+    matcher: Matcher | None = None,
+    writer: LetterWriter | None = None,
+    letters_dir: str = "data/letters",
 ) -> list[BaseTool]:
     """Create the agent's tools, bound to a search client and a tracker.
 
-    ``score_jobs`` is only offered when a ``matcher`` (i.e. a CV) is available,
-    so the model is never shown a tool it can't use.
+    ``score_jobs`` and ``draft_cover_letter`` are only offered when a
+    ``matcher`` / ``writer`` (i.e. a CV) is available, so the model is never
+    shown a tool it can't use.
 
     Jobs returned by a search are remembered for the session, so the model can
     refer to them later by id alone (e.g. to save one) without re-sending them.
@@ -111,6 +118,8 @@ def build_tools(
     tools: list[BaseTool] = [search_jobs, save_application, update_application, list_applications]
     if matcher is not None:
         tools.append(_score_jobs_tool(matcher, seen))
+    if writer is not None:
+        tools.append(_cover_letter_tool(writer, seen, letters_dir))
     return tools
 
 
@@ -146,3 +155,47 @@ def _score_jobs_tool(matcher: Matcher, seen: dict[str, Job]) -> BaseTool:
         return json.dumps(results)
 
     return score_jobs
+
+
+# Tag for tools that pause the graph for a human; they only work inside the agent.
+NEEDS_APPROVAL = "human_approval"
+
+
+def _cover_letter_tool(writer: LetterWriter, seen: dict[str, Job], letters_dir: str) -> BaseTool:
+    # On resume LangGraph re-runs the tool from the top, so drafts are cached:
+    # the letter the user approved is exactly the one that gets saved.
+    drafts: dict[tuple[str, str], str] = {}
+
+    @tool
+    def draft_cover_letter(job_id: str, focus: str = "") -> str:
+        """Draft a cover letter for a job and ask the user to approve it.
+
+        Use this when the user asks for a cover letter. ``job_id`` must come
+        from an earlier search_jobs result; ``focus`` is optional guidance such
+        as "stress my RAG projects". The user sees the draft and approves,
+        edits or rejects it; only approved letters are saved. If they reject
+        it with feedback, call this again with that feedback as ``focus``.
+        """
+        job = seen.get(job_id)
+        if job is None:
+            return f"Error: unknown job id {job_id!r}. Search for it first."
+        key = (job_id, focus)
+        if key not in drafts:
+            try:
+                drafts[key] = writer.draft(job, focus)
+            except Exception as exc:  # e.g. rate limit: report it, don't crash the run
+                return f"Error: drafting failed: {exc.__class__.__name__}"
+        decision = interrupt(
+            {"job_id": job_id, "title": job.title, "company": job.company, "draft": drafts[key]}
+        )
+        draft = drafts.pop(key)
+        # The resume value is {"approved": bool, "text": edited letter?, "feedback": str}.
+        decision = decision if isinstance(decision, dict) else {}
+        if not decision.get("approved"):
+            feedback = decision.get("feedback") or "none given"
+            return f"The user rejected the draft. Feedback: {feedback}"
+        path = save_letter(letters_dir, job, str(decision.get("text") or draft))
+        return f"Approved and saved to {path.as_posix()}."
+
+    draft_cover_letter.tags = [NEEDS_APPROVAL]
+    return draft_cover_letter
