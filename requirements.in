@@ -5,3 +5,4 @@ pydantic-settings
 langgraph
 langchain-core
 langchain-openai
+mcp

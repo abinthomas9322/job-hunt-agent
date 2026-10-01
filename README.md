@@ -11,9 +11,10 @@
 - [x] **Slice 1: tools.** Real job search and a SQLite application tracker (see [Job data](#job-data))
 - [x] **Slice 2: agent loop.** LangGraph graph where the LLM (Groq) chooses tools, with per-conversation memory and a step limit
 - [x] **Slice 3: CV match scoring.** `score_jobs` rates each job 0-100 against your CV with matched/missing skills, using schema-validated structured output; contact details are redacted before the CV reaches the LLM
+- [x] **MCP server.** The same tools exposed over the Model Context Protocol, so Claude Desktop, Claude Code or any MCP client can search, score and track jobs (see [Use it from an MCP client](#use-it-from-an-mcp-client))
 - [ ] Slice 4: cover-letter drafts with human approval
 - [ ] Slice 5: agent evaluation (tool-choice accuracy, score accuracy)
-- [ ] Slice 6: MCP server, UI, Docker
+- [ ] Slice 6: UI, Docker
 
 ## Quick start
 
@@ -39,6 +40,31 @@ python -m jobagent.cli --trace       # chat with the agent (needs keys in .env)
 Limitation: company boards list mostly experienced roles; graduate
 programmes are often advertised elsewhere (e.g. gradireland), which this
 does not cover yet.
+
+## Use it from an MCP client
+
+`jobagent/mcp_server.py` registers every agent tool on an MCP server, reusing
+each tool's typed signature and docstring as its schema, so the LangGraph agent
+and MCP clients share one contract. Run it over stdio:
+
+```bash
+python -m jobagent.mcp_server
+```
+
+Example Claude Desktop / Claude Code config (`mcpServers`):
+
+```json
+{
+  "job-hunt-agent": {
+    "command": "/path/to/job-hunt-agent/.venv/bin/python",
+    "args": ["-m", "jobagent.mcp_server"],
+    "cwd": "/path/to/job-hunt-agent"
+  }
+}
+```
+
+Then ask the client things like "find graduate AI jobs in Dublin and rank them
+against my CV". `score_jobs` appears only when `CV_PATH` is set.
 
 ## How the agent works
 
