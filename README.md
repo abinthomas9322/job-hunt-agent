@@ -13,7 +13,9 @@
 - [x] **Slice 3: CV match scoring.** `score_jobs` rates each job 0-100 against your CV with matched/missing skills, using schema-validated structured output; contact details are redacted before the CV reaches the LLM
 - [x] **MCP server.** The same tools exposed over the Model Context Protocol, so Claude Desktop, Claude Code or any MCP client can search, score and track jobs (see [Use it from an MCP client](#use-it-from-an-mcp-client))
 - [x] **Slice 4: cover letters with human approval.** `draft_cover_letter` writes a letter from CV facts only, then pauses the graph (LangGraph `interrupt`) until you approve, edit or reject it; only approved letters are saved to `data/letters/`, and rejection feedback goes back to the agent for a redraft
-- [ ] Slice 5: agent evaluation (tool-choice accuracy, score accuracy)
+- [x] **Slice 5: agent evaluation.** `evals/` runs hand-labelled cases against the
+  real LLM (not the scripted fakes `tests/` uses) and checks tool-choice
+  accuracy and CV-score accuracy/ranking; see [Evaluating the agent](#evaluating-the-agent)
 - [ ] Slice 6: UI, Docker
 
 ## Quick start
@@ -94,6 +96,32 @@ The graph is checkpointed, so a paused run survives while it waits for you.
 Drafts are cached per job, so the letter you approve is exactly the one saved.
 In the CLI the draft is shown with a `[y]es / [n]o / [e]dit` prompt. The tool is
 not exposed over MCP, because the pause only works inside the agent.
+
+## Evaluating the agent
+
+`tests/` pins the LLM's replies with a scripted fake, so it's fast and
+deterministic but can't catch a prompt or tool-description change that makes
+the *real* model stop choosing the right tool, or stop scoring jobs sensibly.
+`evals/` covers that gap by running hand-labelled cases against the real Groq
+model and your real CV:
+
+```bash
+python -m evals
+```
+
+It needs `GROQ_API_KEY` (and `CV_PATH` for the score cases) in `.env` — real
+API calls, so it's not part of `pytest` or CI. It checks:
+
+- **Tool-choice accuracy:** for each of 8 labelled prompts (e.g. "find AI jobs
+  in Dublin" → `search_jobs`, a greeting → no tool), does the model ask to call
+  the expected tool, or none?
+- **Score accuracy:** does `score_jobs` land each hand-picked job in a sane
+  0-100 band for your CV (band checks), and does a clearly-better-fit job
+  always outscore a clearly-worse one (ranking checks, more robust than an
+  exact band since an LLM judge's exact number isn't reproducible to the point)?
+
+Exits non-zero if anything fails, so it also works as a manual gate before
+changing `SYSTEM_PROMPT`, a tool's docstring, or the scoring rubric.
 
 ## License
 
